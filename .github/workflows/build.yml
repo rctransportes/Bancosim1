@@ -1,0 +1,43 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install APKTool
+        run: |
+          sudo apt update
+          sudo apt install -y apktool
+
+      - name: Unzip project
+        run: |
+          unzip bancosim-apk.zip -d app
+
+      - name: Build APK
+        run: |
+          apktool b app -o unsigned.apk
+
+      - name: Sign APK
+        run: |
+          keytool -genkey -v -keystore mykey.jks -keyalg RSA -keysize 2048 -validity 10000 -alias bancosim -storepass 123456 -keypass 123456 -dname "CN=Bancosim"
+          jarsigner -keystore mykey.jks -storepass 123456 -keypass 123456 unsigned.apk bancosim
+          zipalign -v 4 unsigned.apk bancosim-release.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bancosim-apk
+          path: bancosim-release.apk
